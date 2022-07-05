@@ -1,0 +1,21 @@
+﻿[
+  {
+    "path": "/",
+    "name": "welcome",
+    "key": "welcome",
+    "icon": "dashboard"
+  },
+  {
+    "path": "",
+    "name": "配置文件",
+    "key": "config",
+    "icon": "dashboard",
+    "children": [
+      {
+        "path": "/xtc/startkit/healthy",
+        "name": "Excel表格",
+        "key": "sheetconfig.list"
+      }
+    ]
+  }
+]

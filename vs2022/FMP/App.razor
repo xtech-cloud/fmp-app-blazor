@@ -1,4 +1,14 @@
-<Router AppAssembly="@typeof(Program).Assembly">
+@using System.Reflection
+@using Microsoft.AspNetCore.Components.WebAssembly.Services
+@using Microsoft.Extensions.Logging
+@using System.Runtime.Loader
+@inject LazyAssemblyLoader AssemblyLoader
+@inject ILogger<App> Logger
+@inject HttpClient HttpClient
+
+<Router AppAssembly="@typeof(Program).Assembly"
+        AdditionalAssemblies="@lazyLoadedAssemblies" 
+        OnNavigateAsync="@OnNavigateAsync">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(BasicLayout)" />
     </Found>
@@ -9,3 +19,29 @@
     </NotFound>
 </Router>
 <AntContainer />
+
+@code {
+    private List<Assembly> lazyLoadedAssemblies = new();
+
+    private async Task OnNavigateAsync(NavigationContext args)
+    {
+        try
+        {
+            if (args.Path == "xtc/startkit/healthy")
+            {
+                var assemblies = await AssemblyLoader.LoadAssembliesAsync(
+                    new[] { "fmp-startkit-lib-razor.dll" });
+                lazyLoadedAssemblies.AddRange(assemblies);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Error: {Message}", ex.Message);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
+}

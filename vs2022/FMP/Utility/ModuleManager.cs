@@ -1,114 +1,34 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
 using System.Reflection;
+using System.Threading.Tasks;
 using XTC.FMP.LIB.MVCS;
 
 namespace XTC.FMP.APP.Blazor
 {
     public class ModuleManager
     {
-        /*
-        public ConsoleLogger logger
-        {
-            get;
-            set;
-        }
-        */
-        public Framework framework
-        {
-            get;
-            set;
-        }
-
-        public class Module
-        {
-            private object instance = null;
-            private MethodInfo mi = null;
-            private object[] param = null;
-
-            public Module(object _instance, MethodInfo _methodInfo)
-            {
-                instance = _instance;
-                mi = _methodInfo;
-                param = new object[2];
-            }
-
-            public void Invoke(string _method, object[] _param)
-            {
-                param[0] = _method;
-                param[1] = _param;
-                mi.Invoke(instance, param);
-            }
-        }
         private Dictionary<string, Assembly> assemblyMap = new Dictionary<string, Assembly>();
 
-        public ModuleManager()
+        public async Task<Assembly> Load(string _path, HttpClient _httpClient)
         {
-            AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(assemblyResolve);
-        }
-
-        public void Load()
-        {
-            string curDir = System.IO.Directory.GetCurrentDirectory();
-            string modulesDir = Path.Combine(curDir, "modules");
-            if (!Directory.Exists(modulesDir))
-                return;
-
-            foreach (string entry in Directory.GetFiles(modulesDir))
+            Assembly assembly;
+            string name = Path.GetFileName(_path);
+            if(!assemblyMap.TryGetValue(name, out assembly))
             {
-                Assembly assembly = Assembly.LoadFile(entry);
-                if (null == assembly)
-                    continue;
-
-                string filename = Path.GetFileName(entry);
-                assemblyMap[filename] = assembly;
+                var bytes = await _httpClient.GetByteArrayAsync(_path);
+                assembly = Assembly.Load(bytes);
+                assemblyMap[name] = assembly;
             }
+            return assembly;
         }
 
-        public void Unload()
+        public Assembly AssemblyResolve(object sender, ResolveEventArgs args)
         {
-
-        }
-
-        public void Register()
-        {
-            foreach(string filename in assemblyMap.Keys)
-            {
-                string rootClass = "";
-                if (filename.EndsWith("-mvcs.dll"))
-                {
-                    string ns = filename.Substring(0, filename.Length - ".module.dll".Length);
-                    rootClass = string.Format("{0}.Entry", ns);
-                }
-                else if (filename.EndsWith(".wpf.dll"))
-                {
-                    string ns = filename.Substring(0, filename.Length - ".wpf.dll".Length);
-                    rootClass = string.Format("{0}.ControlRoot", ns);
-                }
-                else
-                {
-                    continue;
-                }
-
-                Assembly assembly = assemblyMap[filename];
-                object instance = assembly.CreateInstance(rootClass);
-                Type t = assembly.GetType(rootClass);
-                MethodInfo miInject = t.GetMethod("Inject");
-                miInject.Invoke(instance, new object[] { framework });
-                MethodInfo miRegister = t.GetMethod("Register");
-                miRegister.Invoke(instance, null);
-            }
-        }
-
-        public void Cancel()
-        {
-            //TODO Cancel
-        }
-
-        private Assembly assemblyResolve(object sender, ResolveEventArgs args)
-        {
-            return assemblyMap[args.Name.Remove(args.Name.IndexOf(',')) + ".dll"];
+            var assembly = assemblyMap[args.Name.Remove(args.Name.IndexOf(',')) + ".dll"];
+            return assembly;
         }
     }
 }

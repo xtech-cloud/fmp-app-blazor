@@ -4,12 +4,13 @@
     <TargetFramework>net6</TargetFramework>
     <RazorLangVersion>3.0</RazorLangVersion>
     <RootNamespace>XTC.FMP.APP.Blazor</RootNamespace>
+    <AssemblyName>XTC.FMP.APP.Blazor</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="AntDesign.Charts" Version="0.2.3" />
     <PackageReference Include="AntDesign.ProLayout" Version="0.10.6" />
-    <PackageReference Include="fmp-lib-mvcs" Version="1.2.0" />
+    <PackageReference Include="fmp-lib-mvcs" Version="1.4.0" />
     <PackageReference Include="Google.Api.CommonProtos" Version="2.6.0" />
     <PackageReference Include="Google.Protobuf" Version="3.21.2" />
     <PackageReference Include="Grpc.Net.Client" Version="2.46.0" />
@@ -21,26 +22,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="wwwroot\data\" />
+	  <Folder Include="wwwroot\data\" />
+	  <Folder Include="wwwroot\modules\" />
   </ItemGroup>
-
-	<ItemGroup>
-		<BlazorWebAssemblyLazyLoad Include="fmp-startkit-lib-razor.dll" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Reference Include="fmp-startkit-lib-bridge">
-	    <HintPath>..\modules\fmp-startkit-lib-bridge.dll</HintPath>
-	  </Reference>
-	  <Reference Include="fmp-startkit-lib-mvcs">
-	    <HintPath>..\modules\fmp-startkit-lib-mvcs.dll</HintPath>
-	  </Reference>
-	  <Reference Include="fmp-startkit-lib-proto">
-	    <HintPath>..\modules\fmp-startkit-lib-proto.dll</HintPath>
-	  </Reference>
-	  <Reference Include="fmp-startkit-lib-razor">
-	    <HintPath>..\modules\fmp-startkit-lib-razor.dll</HintPath>
-	  </Reference>
-	</ItemGroup>
 
 </Project>

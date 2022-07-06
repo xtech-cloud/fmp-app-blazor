@@ -4,7 +4,6 @@
 @using Microsoft.Extensions.Logging
 @using System.Runtime.Loader
 @using XTC.FMP.APP.Blazor.Proto
-@using XTC.FMP.MOD.StartKit.LIB.Proto;
 @using XTC.FMP.LIB.MVCS
 @inject LazyAssemblyLoader assemblyLoader_
 @inject Logger logger_
@@ -47,16 +46,8 @@
     {
         await base.OnInitializedAsync();
 
-         var grpcClient1 = new Healthy.HealthyClient(channel_);
-        try{
-            var response = await grpcClient1.EchoAsync(new EchoRequest(){Msg="hehe"});
-            logger_.Info(response.Msg);
-        }
-        catch(Exception ex)
-        {
-            logger_.Error(ex.Message);
-        }
-
+        // 使用一个虚拟的协议，调用grpc的通信，以加载相关的库文件
+        // ！！！ 缺少这个步骤，在发布为wasm后，动态加载库文件使用grpc通信会崩溃
         var grpcClient = new Dummy.DummyClient(channel_);
         try{
             await grpcClient.CallAsync(new CallRequest(){StringValue = "string value"});

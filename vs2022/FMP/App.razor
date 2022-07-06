@@ -3,13 +3,15 @@
 @using Microsoft.AspNetCore.Components.WebAssembly.Services
 @using Microsoft.Extensions.Logging
 @using System.Runtime.Loader
+@using XTC.FMP.APP.Blazor.Proto
+@using XTC.FMP.MOD.StartKit.LIB.Proto;
 @using XTC.FMP.LIB.MVCS
-@inject LazyAssemblyLoader AssemblyLoader
-@inject ILogger<App> Logger
-@inject HttpClient httpClient
-@inject GrpcChannel channel
-@inject Framework framework
-@inject ModuleManager moduleManager
+@inject LazyAssemblyLoader assemblyLoader_
+@inject Logger logger_
+@inject HttpClient httpClient_
+@inject GrpcChannel channel_
+@inject Framework framework_
+@inject ModuleRouter moduleRouter_
 
 <Router AppAssembly="@typeof(Program).Assembly"
         AdditionalAssemblies="@lazyLoadedAssemblies"
@@ -32,45 +34,37 @@
     {
         try
         {
-            if (args.Path == "xtc/startkit/healthy")
-            {
-                var assemblyProto = await moduleManager.Load("modules/fmp-startkit-lib-proto.dll", httpClient);
-                lazyLoadedAssemblies.Add(assemblyProto);
-
-                var assemblyBridge = await moduleManager.Load("modules/fmp-startkit-lib-bridge.dll", httpClient);
-                lazyLoadedAssemblies.Add(assemblyBridge);
-
-                var assemblyMVCS = await moduleManager.Load("modules/fmp-startkit-lib-mvcs.dll", httpClient);
-                lazyLoadedAssemblies.Add(assemblyMVCS);
-
-                string optionsClass = "XTC.FMP.MOD.StartKit.LIB.MVCS.Options";
-                object instanceOptions = assemblyMVCS.CreateInstance(optionsClass);
-                Type options = assemblyMVCS.GetType(optionsClass);
-                MethodInfo miSetChannel = options.GetMethod("setChannel");
-                miSetChannel.Invoke(instanceOptions,  new object[] { channel });
-
-                string entryClass = "XTC.FMP.MOD.StartKit.LIB.MVCS.Entry";
-                object instanceEntry = assemblyMVCS.CreateInstance(entryClass);
-                Type entry = assemblyMVCS.GetType(entryClass);
-                MethodInfo miInject = entry.GetMethod("Inject");
-                miInject.Invoke(instanceEntry, new object[] { framework, instanceOptions });
-                MethodInfo miRegister = entry.GetMethod("DynamicRegister");
-                miRegister.Invoke(instanceEntry, null);
-                framework.PushUserData("XTC.FMP.MOD.StartKit.LIB.MVCS.Entry", entry as IUserData);
-
-                var assemblyRazor = await moduleManager.Load("modules/fmp-startkit-lib-razor.dll", httpClient);
-                lazyLoadedAssemblies.Add(assemblyRazor);
-            }
+            lazyLoadedAssemblies.AddRange(await moduleRouter_.Route(args.Path, httpClient_, channel_, framework_, logger_));
         }
         catch (Exception ex)
         {
-            Logger.LogError("Error: {Message}", ex.Message);
+            logger_.Error(ex.Message);
+            logger_.Exception(ex);
         }
     }
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
+
+         var grpcClient1 = new Healthy.HealthyClient(channel_);
+        try{
+            var response = await grpcClient1.EchoAsync(new EchoRequest(){Msg="hehe"});
+            logger_.Info(response.Msg);
+        }
+        catch(Exception ex)
+        {
+            logger_.Error(ex.Message);
+        }
+
+        var grpcClient = new Dummy.DummyClient(channel_);
+        try{
+            await grpcClient.CallAsync(new CallRequest(){StringValue = "string value"});
+        }
+        catch(Exception ex)
+        {
+            logger_.Error(ex.Message);
+        }
     }
 
     

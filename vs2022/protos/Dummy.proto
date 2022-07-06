@@ -1,0 +1,21 @@
+syntax = "proto3";
+import "google/api/annotations.proto";
+option csharp_namespace = "XTC.FMP.APP.Blazor.Proto";
+
+package xtc.fmp.app.blazor;
+
+service Dummy{
+	rpc Call(CallRequest) returns (CallResponse) {
+		option (google.api.http) = {
+             get: "/app/dummy/call"
+         };
+	};
+}
+
+message CallRequest {
+    string stringValue = 1;
+}
+
+message CallResponse {
+    string stringValue = 1;
+}

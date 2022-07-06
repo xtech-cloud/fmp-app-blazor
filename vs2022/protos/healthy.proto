@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+import "google/api/annotations.proto";
+
+option csharp_namespace = "XTC.FMP.MOD.StartKit.LIB.Proto";
+
+package xtc.fmp.startkit;
+
+service Healthy {
+    rpc Echo(EchoRequest) returns (EchoResponse) { 
+         option (google.api.http) = {
+             get: "/v1/{msg}"
+         };
+    }
+}
+
+message Status {
+  int32 code = 1;     // 状态码
+  string message = 2; // 状态信息
+}
+
+
+message EchoRequest {
+    string msg = 1;
+}
+
+message EchoResponse {
+    Status status = 1;
+    string msg = 2;
+}

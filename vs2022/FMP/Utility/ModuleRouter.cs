@@ -162,9 +162,9 @@ namespace XTC.FMP.APP.Blazor
             }
             _logger.Debug($"invoke {methodRegister} with ({_logger})");
             methodRegister.Invoke(entryInstance, new object[] { _logger });
-            IUserData userData = entryInstance as IUserData;
+            UserData userData = entryInstance as UserData;
             _logger.Trace($"push entry into framework");
-            _framework.PushUserData(entryClassName, userData);
+            _framework.setUserData(entryClassName, userData);
         }
     }
 }

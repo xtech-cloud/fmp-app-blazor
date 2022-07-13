@@ -11,7 +11,7 @@
     <Protobuf Include="..\protos\*.proto" GrpcServices="Both" />
     <PackageReference Include="AntDesign.Charts" Version="0.2.3" />
     <PackageReference Include="AntDesign.ProLayout" Version="0.10.6" />
-    <PackageReference Include="fmp-lib-mvcs" Version="1.5.0" />
+    <PackageReference Include="fmp-lib-mvcs" Version="1.6.0" />
     <PackageReference Include="Google.Api.CommonProtos" Version="2.6.0" />
     <PackageReference Include="Grpc.Core" Version="2.46.3" />
     <PackageReference Include="Grpc.Net.Client" Version="2.47.0" />

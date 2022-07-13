@@ -7,14 +7,14 @@
   },
   {
     "path": "",
-    "name": "配置文件",
-    "key": "config",
+    "name": "开发套件",
+    "key": "startkit",
     "icon": "dashboard",
     "children": [
       {
         "path": "/xtc/startkit/healthy",
-        "name": "Excel表格",
-        "key": "sheetconfig.list"
+        "name": "健康",
+        "key": "healthy"
       }
     ]
   }

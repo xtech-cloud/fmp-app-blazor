@@ -3,10 +3,10 @@
     {
       "path": "xtc/startkit/healthy",
       "assemblies": [
-        "fmp-startkit-lib-proto.dll",
-        "fmp-startkit-lib-bridge.dll",
-        "fmp-startkit-lib-mvcs.dll",
-        "fmp-startkit-lib-razor.dll"
+        "fmp-xtc-startkit-lib-proto.dll",
+        "fmp-xtc-startkit-lib-bridge.dll",
+        "fmp-xtc-startkit-lib-mvcs.dll",
+        "fmp-xtc-startkit-lib-razor.dll"
       ],
       "ns": "XTC.FMP.MOD.StartKit"
     }

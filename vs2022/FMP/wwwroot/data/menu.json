@@ -7,14 +7,24 @@
   },
   {
     "path": "",
-    "name": "开发套件",
-    "key": "startkit",
+    "name": "仓库",
+    "key": "repository",
     "icon": "dashboard",
     "children": [
       {
-        "path": "/xtc/startkit/healthy",
+        "path": "/xtc/repository/healthy",
         "name": "健康",
         "key": "healthy"
+      },
+      {
+        "path": "/xtc/repository/plugin",
+        "name": "插件",
+        "key": "plugin"
+      },
+      {
+        "path": "/xtc/repository/module",
+        "name": "模块",
+        "key": "module"
       }
     ]
   }

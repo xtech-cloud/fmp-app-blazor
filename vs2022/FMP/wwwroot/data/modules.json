@@ -1,14 +1,11 @@
 ﻿{
   "modules": [
     {
-      "path": "xtc/startkit/healthy",
-      "assemblies": [
-        "fmp-xtc-startkit-lib-proto.dll",
-        "fmp-xtc-startkit-lib-bridge.dll",
-        "fmp-xtc-startkit-lib-mvcs.dll",
-        "fmp-xtc-startkit-lib-razor.dll"
-      ],
-      "ns": "XTC.FMP.MOD.StartKit"
+      "org": "XTC",
+      "name": "StartKit",
+      "version": "latest",
+      "pages": [ "xtc/startkit/healthy" ],
+      "grpc": "https://localhost:29000"
     }
   ]
 }

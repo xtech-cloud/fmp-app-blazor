@@ -1,4 +1,5 @@
 ﻿using Grpc.Net.Client;
+using Grpc.Net.Client.Web;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,13 +11,16 @@ using XTC.FMP.LIB.MVCS;
 
 namespace XTC.FMP.APP.Blazor
 {
+
     public class ModuleRouter
     {
         private class Module
         {
-            public string path { get; set; }
-            public string ns { get; set; }
-            public string[] assemblies { get; set; }
+            public string org { get; set; }
+            public string name { get; set; }
+            public string version { get; set; }
+            public string grpc { get; set; }
+            public List<string> pages { get; set; } = new List<string>();
         }
 
         private class ModuleConfig
@@ -29,20 +33,46 @@ namespace XTC.FMP.APP.Blazor
         private Dictionary<string, Assembly> assemblyMap_ = new Dictionary<string, Assembly>();
         private Dictionary<string, List<Assembly>> routerCache_ = new Dictionary<string, List<Assembly>>();
 
-        public async Task<List<Assembly>> Route(string _path, HttpClient _httpClient, GrpcChannel _channel, Framework _framework, Logger _logger)
+        public async Task<List<Assembly>> Route(string _path, ScalingManager _scalingMgr, Framework _framework, Logger _logger)
         {
             // 加载配置文件
             if (null == config_)
             {
                 _logger.Debug("load modules.json ......");
-                config_ = await _httpClient.GetFromJsonAsync<ModuleConfig>("data/modules.json");
+                if (_scalingMgr.settings.Active)
+                {
+                    // 获取仓库的清单
+                    var agents = await _scalingMgr.FetchAgents();
+                    config_ = new ModuleConfig();
+                    config_.modules = new Module[agents.Length];
+                    for (int i = 0; i < agents.Length; i++)
+                    {
+                        var m = agents[i];
+                        config_.modules[i] = new Module();
+                        config_.modules[i].org = m.Org;
+                        config_.modules[i].name = m.Name;
+                        config_.modules[i].version = m.Version;
+                        config_.modules[i].grpc = string.Format("{0}:{1}", _scalingMgr.settings.Grpc, m.Port);
+                        config_.modules[i].pages.AddRange(m.Pages ?? new string[0]);
+                    }
+                }
+                else
+                {
+                    config_ = await _scalingMgr.internalClient.GetFromJsonAsync<ModuleConfig>("data/modules.json");
+                }
+
                 if (null == config_)
                 {
                     return new List<Assembly>();
                 }
                 foreach (var module in config_.modules)
                 {
-                    routerCache_[module.path] = null;
+                    foreach (var page in module.pages)
+                    {
+                        // 先不加载程序集，在访问时加载路径对应的程序集
+                        string path = string.Format("{0}/{1}/{2}", module.org.ToLower(), module.name.ToLower(), page.ToLower());
+                        routerCache_[path] = null;
+                    }
                 }
             }
 
@@ -51,31 +81,32 @@ namespace XTC.FMP.APP.Blazor
             if (!routerCache_.TryGetValue(_path, out assemblies))
                 return new List<Assembly>();
 
-            // 是模块的路径，并已经加载过
+            // 是模块的路径，并已经加载过，返回空列表，使用内存中已经加载过的程序集
             if (null != assemblies)
                 return new List<Assembly>();
 
+            // 加载路径对应的程序集
             foreach (var module in config_.modules)
             {
-                if (!module.path.Equals(_path))
+                var page = module.pages.Find((_item) =>
+                {
+                    return _path.Equals(string.Format("{0}/{1}/{2}", module.org.ToLower(), module.name.ToLower(), _item.ToLower()));
+                });
+                if (null == page)
                     continue;
 
-                assemblies = new List<Assembly>();
-                foreach (var assemblyName in module.assemblies)
+                try
                 {
-                    _logger.Debug($"load {assemblyName} ......");
-                    var assembly = await load($"modules/{assemblyName}", _httpClient, _logger);
-                    if (null == assembly)
-                    {
-                        _logger.Error($"load {assemblyName} failed");
-                        continue;
-                    }
-                    _logger.Debug($"load {assemblyName} success");
-                    assemblies.Add(assembly);
-                    if (assemblyName.EndsWith("-mvcs.dll"))
-                        activateModule(assembly, module.ns, _channel, _framework, _logger);
+                    // 加载程序集到内存
+                    assemblies = await load(module, _scalingMgr, _framework, _logger);
                 }
-                routerCache_[module.path] = assemblies;
+                catch (Exception ex)
+                {
+                    _logger.Exception(ex);
+                }
+
+                // 将程序集放入路径的缓存中
+                routerCache_[_path] = assemblies;
                 break;
             }
             return assemblies;
@@ -87,38 +118,73 @@ namespace XTC.FMP.APP.Blazor
             return assembly;
         }
 
-        private async Task<Assembly> load(string _path, HttpClient _httpClient, Logger _logger)
+        private async Task<List<Assembly>> load(Module _module, ScalingManager _scalingMgr, Framework _framework, Logger _logger)
         {
-            Assembly assembly;
-            string name = Path.GetFileName(_path);
-            if (!assemblyMap_.TryGetValue(name, out assembly))
+            string[] dlls = new string[] {
+                    string.Format("fmp-{0}-{1}-lib-proto.dll", _module.org.ToLower(), _module.name.ToLower()),
+                    string.Format("fmp-{0}-{1}-lib-bridge.dll", _module.org.ToLower(), _module.name.ToLower()),
+                    string.Format("fmp-{0}-{1}-lib-mvcs.dll", _module.org.ToLower(), _module.name.ToLower()),
+                    string.Format("fmp-{0}-{1}-lib-razor.dll", _module.org.ToLower(), _module.name.ToLower()),
+            };
+
+            if (!_scalingMgr.settings.Active)
             {
-                try
-                {
-                    var bytes = await _httpClient.GetByteArrayAsync(_path);
-                    assembly = Assembly.Load(bytes);
-                    assemblyMap_[name] = assembly;
-                }
-                catch (Exception ex)
-                {
-                    _logger.Exception(ex);
-                }
+                //TODO 处理Internal的模块
+                throw new NotImplementedException();
             }
-            return assembly;
+
+            string version = _module.version;
+            if (_scalingMgr.settings.Environment.Equals("develop"))
+                version = "develop";
+
+            List<Assembly> assemblies = new List<Assembly>();
+            foreach (var dll in dlls)
+            {
+                _logger.Debug($"load {dll} ......");
+                string filepath = $"fmp.repository/modules/{_module.org}/{_module.name}@{version}/{dll}";
+                Assembly assembly;
+                if (!assemblyMap_.TryGetValue(dll, out assembly))
+                {
+                    try
+                    {
+                        var bytes = await _scalingMgr.repositoryClient.GetByteArrayAsync(filepath);
+                        assembly = Assembly.Load(bytes);
+                        assemblyMap_[dll] = assembly;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error($"load {dll} failed");
+                        _logger.Exception(ex);
+                        continue;
+                    }
+                }
+                _logger.Debug($"load {dll} success");
+                if (dll.EndsWith("-mvcs.dll"))
+                    activateModule(assembly, _module, _framework, _logger);
+                assemblies.Add(assembly);
+            }
+            return assemblies;
+
         }
 
-        private void activateModule(Assembly _assembly, string _namespace, GrpcChannel _channel, Framework _framework, Logger _logger)
+        private void activateModule(Assembly _assembly, Module _module, Framework _framework, Logger _logger)
         {
+            var channel = GrpcChannel.ForAddress(_module.grpc, new GrpcChannelOptions
+            {
+                HttpHandler = new GrpcWebHandler(new HttpClientHandler())
+            });
+
+            string ns = string.Format("{0}.FMP.MOD.{1}", _module.org, _module.name);
             _logger.Debug($"new Options ...");
-            string optionsClassName = $"{_namespace}.LIB.MVCS.Options";
+            string optionsClassName = $"{ns}.LIB.MVCS.Options";
             object optionsInstance = _assembly.CreateInstance(optionsClassName);
-            if(null == optionsInstance)
+            if (null == optionsInstance)
             {
                 _logger.Error("CreateInstance failed");
                 return;
             }
             Type optionsType = _assembly.GetType(optionsClassName);
-            if(null == optionsType)
+            if (null == optionsType)
             {
                 _logger.Error($"Type:{optionsClassName} not found in {_assembly.FullName}");
                 return;
@@ -129,11 +195,11 @@ namespace XTC.FMP.APP.Blazor
                 _logger.Error($"Method:setChannel not found in {_assembly.FullName}");
                 return;
             }
-            _logger.Debug($"invoke {methodSetChannel} with ({_channel})");
-            methodSetChannel.Invoke(optionsInstance, new object[] { _channel });
+            _logger.Debug($"invoke {methodSetChannel} with ({channel})");
+            methodSetChannel.Invoke(optionsInstance, new object[] { channel });
 
             _logger.Debug($"new Entry ...");
-            string entryClassName = $"{_namespace}.LIB.MVCS.Entry";
+            string entryClassName = $"{ns}.LIB.MVCS.Entry";
             object entryInstance = _assembly.CreateInstance(entryClassName);
             if (null == entryInstance)
             {
@@ -161,7 +227,8 @@ namespace XTC.FMP.APP.Blazor
                 return;
             }
             _logger.Debug($"invoke {methodRegister} with ({_logger})");
-            methodRegister.Invoke(entryInstance, new object[] { _logger });
+            // uid必须是default，razor库中使用的是此值
+            methodRegister.Invoke(entryInstance, new object[] { "default", _logger });
             UserData userData = entryInstance as UserData;
             _logger.Trace($"push entry into framework");
             _framework.setUserData(entryClassName, userData);

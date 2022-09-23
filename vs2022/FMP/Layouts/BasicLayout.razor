@@ -34,8 +34,8 @@
             menuDataItems.Add(new MenuDataItem
                 {
                     Path = "/",
-                    Name = "welcome",
-                    Key = "welcome",
+                    Name = "Dashboard",
+                    Key = "dashboard",
                     Icon = "dashboard",
                 });
 
@@ -46,7 +46,7 @@
                 item.Path = "";
                 item.Name = string.Format("{0}.{1}", module.Org, module.Name);
                 item.Key = string.Format("{0}.{1}", module.Org, module.Name).ToLower();
-                item.Icon = "dashboard";
+                item.Icon = "menu";
                 int pagesCount = module.Pages?.Length ?? 0;
                 item.Children = new MenuDataItem[pagesCount];
                 for (int i = 0; i < pagesCount; i++)

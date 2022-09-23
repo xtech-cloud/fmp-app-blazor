@@ -39,6 +39,12 @@
         if (lazyLoadedPath.Contains(path))
             return;
 
+        if (!dependencyLoaded)
+        {
+            loadDependencies();
+            dependencyLoaded = true;
+        }
+
         try
         {
             lazyLoadedAssemblies.AddRange(await moduleRouter_.Route(path, scalingMgr_, framework_, logger_));
@@ -63,11 +69,12 @@
         scalingSettings.Grpc = section.GetValue<string>("Grpc");
         scalingMgr_.settings = scalingSettings;
         scalingMgr_.SetRepositoryHttpClient(new Uri(scalingSettings.Repository));
+    }
 
-        // 引入运行时需要的类
+    private void loadDependencies()
+    {
+        dependencies.Add(typeof(InputFile));
         dependencies.Add(typeof(IBrowserFile));
         dependencies.Add(typeof(IBufferWriter<string>));
     }
-
-
 }

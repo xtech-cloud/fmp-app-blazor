@@ -39,10 +39,9 @@
         if (lazyLoadedPath.Contains(path))
             return;
 
-        if (!dependencyLoaded)
+        if (dependencies.Count == 0)
         {
             loadDependencies();
-            dependencyLoaded = true;
         }
 
         try

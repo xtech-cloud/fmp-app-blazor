@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace XTC.FMP.APP.Blazor
 {
-    public class ScalingSettings
+    public class RuntimeScalingSettings
     {
         public bool Active { get; set; }
         public string Environment { get; set; }
@@ -15,24 +15,20 @@ namespace XTC.FMP.APP.Blazor
         public string Grpc { get; set; }
     }
 
-    public class ScalingManager
+    /// <summary>
+    /// 运行时伸缩
+    /// </summary>
+    public class RuntimeScalingManager
     {
         public HttpClient internalClient { get; private set; }
         public HttpClient repositoryClient { get; private set; }
-        public ScalingSettings settings { get; set; }
+        public RuntimeScalingSettings settings { get; set; }
 
-        // 使用一个虚拟的协议，调用grpc的通信，以加载相关的库文件
-        // ！！！ 缺少这个步骤，在发布为wasm后，动态加载库文件使用grpc通信会崩溃
-        public GrpcChannel dummyChannel { get; private set; }
 
         private RepoAgent[] agents_;
 
-        public ScalingManager()
+        public RuntimeScalingManager()
         {
-            dummyChannel = GrpcChannel.ForAddress("https://dummy", new GrpcChannelOptions
-            {
-                HttpHandler = new GrpcWebHandler(new HttpClientHandler())
-            });
         }
 
 

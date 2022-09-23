@@ -15,7 +15,7 @@ namespace XTC.FMP.APP.Blazor
             builder.Services.Configure<ProSettings>(builder.Configuration.GetSection("ProSettings"));
 
             ModuleRouter modelRouter = new ModuleRouter();
-            ScalingManager scalingManager = new ScalingManager();
+            RuntimeScalingManager scalingManager = new RuntimeScalingManager();
             scalingManager.SetInternalHttpClient(new Uri(builder.HostEnvironment.BaseAddress));
             AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(modelRouter.AssemblyResolve);
 

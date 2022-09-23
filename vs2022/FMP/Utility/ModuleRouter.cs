@@ -30,10 +30,10 @@ namespace XTC.FMP.APP.Blazor
 
         private ModuleConfig config_;
 
-        private Dictionary<string, Assembly> assemblyMap_ = new Dictionary<string, Assembly>();
-        private Dictionary<string, List<Assembly>> routerCache_ = new Dictionary<string, List<Assembly>>();
+        private Dictionary<string, Assembly> assemblyMap_ = new();
+        private List<string> paths_ = new();
 
-        public async Task<List<Assembly>> Route(string _path, ScalingManager _scalingMgr, Framework _framework, Logger _logger)
+        public async Task<List<Assembly>> Route(string _path, RuntimeScalingManager _scalingMgr, Framework _framework, Logger _logger)
         {
             // 加载配置文件
             if (null == config_)
@@ -69,21 +69,17 @@ namespace XTC.FMP.APP.Blazor
                 {
                     foreach (var page in module.pages)
                     {
-                        // 先不加载程序集，在访问时加载路径对应的程序集
                         string path = string.Format("{0}/{1}/{2}", module.org.ToLower(), module.name.ToLower(), page.ToLower());
-                        routerCache_[path] = null;
+                        paths_.Add(path);
                     }
                 }
             }
 
-            List<Assembly> assemblies;
             // 不是模块的路径
-            if (!routerCache_.TryGetValue(_path, out assemblies))
+            if (!paths_.Contains(_path))
                 return new List<Assembly>();
 
-            // 是模块的路径，并已经加载过，返回空列表，使用内存中已经加载过的程序集
-            if (null != assemblies)
-                return new List<Assembly>();
+            List<Assembly> assemblies = new List<Assembly>();
 
             // 加载路径对应的程序集
             foreach (var module in config_.modules)
@@ -104,9 +100,6 @@ namespace XTC.FMP.APP.Blazor
                 {
                     _logger.Exception(ex);
                 }
-
-                // 将程序集放入路径的缓存中
-                routerCache_[_path] = assemblies;
                 break;
             }
             return assemblies;
@@ -118,7 +111,7 @@ namespace XTC.FMP.APP.Blazor
             return assembly;
         }
 
-        private async Task<List<Assembly>> load(Module _module, ScalingManager _scalingMgr, Framework _framework, Logger _logger)
+        private async Task<List<Assembly>> load(Module _module, RuntimeScalingManager _scalingMgr, Framework _framework, Logger _logger)
         {
             string[] dlls = new string[] {
                     string.Format("fmp-{0}-{1}-lib-proto.dll", _module.org.ToLower(), _module.name.ToLower()),
@@ -140,11 +133,12 @@ namespace XTC.FMP.APP.Blazor
             List<Assembly> assemblies = new List<Assembly>();
             foreach (var dll in dlls)
             {
-                _logger.Debug($"load {dll} ......");
                 string filepath = $"fmp.repository/modules/{_module.org}/{_module.name}@{version}/{dll}";
                 Assembly assembly;
                 if (!assemblyMap_.TryGetValue(dll, out assembly))
                 {
+                    _logger.Debug($"load {dll} ......");
+                    // 没有加载过
                     try
                     {
                         var bytes = await _scalingMgr.repositoryClient.GetByteArrayAsync(filepath);
@@ -157,10 +151,10 @@ namespace XTC.FMP.APP.Blazor
                         _logger.Exception(ex);
                         continue;
                     }
+                    if (dll.EndsWith("-mvcs.dll"))
+                        activateModule(assembly, _module, _framework, _logger);
+                    _logger.Debug($"load {dll} success");
                 }
-                _logger.Debug($"load {dll} success");
-                if (dll.EndsWith("-mvcs.dll"))
-                    activateModule(assembly, _module, _framework, _logger);
                 assemblies.Add(assembly);
             }
             return assemblies;

@@ -32,6 +32,7 @@ namespace XTC.FMP.APP.Blazor
 
         private Dictionary<string, Assembly> assemblyMap_ = new();
         private List<string> paths_ = new();
+        private Dictionary<string, string> permissionS_ = new();
 
         public async Task<List<Assembly>> Route(string _path, RuntimeScalingManager _scalingMgr, Framework _framework, Logger _logger)
         {
@@ -103,6 +104,11 @@ namespace XTC.FMP.APP.Blazor
                 break;
             }
             return assemblies;
+        }
+
+        public void UpdatePermissionS(Dictionary<string, string> _permissionS)
+        {
+            permissionS_ = _permissionS;
         }
 
         public Assembly AssemblyResolve(object sender, ResolveEventArgs args)
@@ -191,6 +197,14 @@ namespace XTC.FMP.APP.Blazor
             }
             _logger.Debug($"invoke {methodSetChannel} with ({channel})");
             methodSetChannel.Invoke(optionsInstance, new object[] { channel });
+            MethodInfo methodSetPermissionS = optionsType.GetMethod("setPermissionS");
+            if (null == methodSetPermissionS)
+            {
+                _logger.Error($"Method:setPermissionS not found in {_assembly.FullName}");
+                return;
+            }
+            _logger.Debug($"invoke {methodSetPermissionS} with ({permissionS_.Count})");
+            methodSetPermissionS.Invoke(optionsInstance, new object[] { permissionS_ });
 
             _logger.Debug($"new Entry ...");
             string entryClassName = $"{ns}.LIB.MVCS.Entry";

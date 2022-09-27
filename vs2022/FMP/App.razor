@@ -13,6 +13,7 @@
 @inject Framework framework_
 @inject ModuleRouter moduleRouter_
 @inject IConfiguration configuration_
+@inject NavigationManager navigationMgr_
 
 <Router AppAssembly="@typeof(Program).Assembly"
         AdditionalAssemblies="@lazyLoadedAssemblies"
@@ -32,6 +33,7 @@
     private List<Assembly> lazyLoadedAssemblies = new();
     private List<string> lazyLoadedPath = new();
     private List<Type> dependencies = new();
+
 
     private async Task OnNavigateAsync(NavigationContext args)
     {
@@ -68,6 +70,29 @@
         scalingSettings.Grpc = section.GetValue<string>("Grpc");
         scalingMgr_.settings = scalingSettings;
         scalingMgr_.SetRepositoryHttpClient(new Uri(scalingSettings.Repository));
+
+
+        // ¡Ÿ ±
+        var query = new Uri(navigationMgr_?.Uri ?? "").Query;
+        var vals = query.Replace("?", "").Split("&");
+        var permission = "";
+        foreach (var val in vals)
+        {
+            if (val.Contains("permissions="))
+            {
+                permission = val.Replace("permissions=", "");
+            }
+        }
+        if (!string.IsNullOrWhiteSpace(permission))
+        {
+            var permissions = await scalingMgr_.internalClient.GetFromJsonAsync<string[]>("data/permissions_" + permission + ".json");
+            var permissionMap = new Dictionary<string, string>();
+            foreach (var p in permissions)
+            {
+                permissionMap[p] = "";
+            }
+            moduleRouter_.UpdatePermissionS(permissionMap);
+        }
     }
 
     private void loadDependencies()

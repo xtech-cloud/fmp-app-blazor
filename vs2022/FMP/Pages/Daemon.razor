@@ -1,5 +1,25 @@
 ﻿@page "/"
 
+<Card>
+    <TextArea @bind-Value=@daemon_status AutoSize=true Bordered=false ReadOnly=true Style="margin:24px">
+    </TextArea>
+</Card>
+
 @code
 {
+    private string daemon_status = "";
+    protected override async Task OnInitializedAsync()
+    {
+        var httpClient = new HttpClient();
+        var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri("http://daemon.xtech.cloud"),
+                Method = HttpMethod.Get,
+            };
+
+        var reply = await httpClient.SendAsync(request);
+        int code = reply.StatusCode.GetHashCode();
+        daemon_status = await reply.Content.ReadAsStringAsync();
+        this.StateHasChanged();
+    }
 }

@@ -33,12 +33,9 @@ namespace XTC.FMP.APP.Blazor
         public RuntimeScalingSettings settings { get; set; }
         public MenuDataItem[] menuConfig { get; set; }
         public ModuleRouter.ModuleConfig moduleConfig { get; set; }
-        public IConfigurationSection skinConfig { get; set; }
+        public ProSettings proSettings { get; set; }
         public Logger logger { get; set; }
         public string vendor { get; set; }
-
-
-        private RepoAgent[] agents_;
 
         public RuntimeScalingManager()
         {
@@ -80,12 +77,9 @@ namespace XTC.FMP.APP.Blazor
                 menuConfig = JsonConvert.DeserializeObject<MenuDataItem[]>(menuConfigJson);
                 string moduleConfigJson = System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String(vendorEntity.ModulesConfig));
                 moduleConfig = JsonConvert.DeserializeObject<ModuleRouter.ModuleConfig>(moduleConfigJson);
-                byte[] skinConfigJson = System.Convert.FromBase64String(vendorEntity.SkinConfig);
-                MemoryStream ms = new MemoryStream(skinConfigJson);
-                var configurationBuilder = new ConfigurationBuilder();
-                configurationBuilder.AddJsonStream(ms);
-                var configurationRoot = configurationBuilder.Build();
-                skinConfig = configurationRoot.GetSection("ProSettings");
+                string skinConfigJson = System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String(vendorEntity.SkinConfig));
+                var tempProSettings = JsonConvert.DeserializeObject<ProSettings>(skinConfigJson);
+                applyProSetting(tempProSettings);
             }
             catch (System.Exception ex)
             {
@@ -137,6 +131,26 @@ namespace XTC.FMP.APP.Blazor
             menuConfig = menuDataItems.ToArray();
             moduleConfig = new ModuleRouter.ModuleConfig();
             moduleConfig.modules = moduleS.ToArray();
+        }
+
+        private void applyProSetting(ProSettings _settings)
+        {
+            proSettings.NavTheme = _settings.NavTheme;
+            proSettings.HeaderHeight = _settings.HeaderHeight;
+            proSettings.Layout = _settings.Layout;
+            proSettings.ContentWidth = _settings.ContentWidth;
+            proSettings.Title = _settings.Title;
+            proSettings.IconfontUrl = _settings.IconfontUrl;
+            proSettings.PrimaryColor = _settings.PrimaryColor;
+            proSettings.FixedHeader = _settings.FixedHeader;
+            proSettings.FixSiderbar = _settings.FixSiderbar;
+            proSettings.ColorWeak = _settings.ColorWeak;
+            proSettings.SplitMenus = _settings.SplitMenus;
+            proSettings.HeaderRender = _settings.HeaderRender;
+            proSettings.FooterRender = _settings.FooterRender;
+            proSettings.MenuRender = _settings.MenuRender;
+            proSettings.MenuHeaderRender = _settings.MenuHeaderRender;
+
         }
     }
 }

@@ -15,6 +15,7 @@
 @inject ModuleRouter moduleRouter_
 @inject IConfiguration configuration_
 @inject NavigationManager navigationMgr_
+@inject IOptions<ProSettings> proSettings_
 
 <Router AppAssembly="@typeof(Program).Assembly"
         AdditionalAssemblies="@lazyLoadedAssemblies"
@@ -106,6 +107,7 @@
             //navigationMgr_.NavigateTo("/");
         }
         scalingMgr_.settings = scalingSettings;
+        scalingMgr_.proSettings = proSettings_.Value;
         if (scalingSettings.Active)
         {
             await scalingMgr_.FetchData();

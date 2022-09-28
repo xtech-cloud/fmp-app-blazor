@@ -6,6 +6,7 @@
 @using System.Runtime.Loader
 @using Microsoft.Extensions.Options
 @using System.Buffers
+@using Newtonsoft.Json
 @using XTC.FMP.LIB.MVCS
 @inject LazyAssemblyLoader assemblyLoader_
 @inject Logger logger_
@@ -33,11 +34,23 @@
     private List<Assembly> lazyLoadedAssemblies = new();
     private List<string> lazyLoadedPath = new();
     private List<Type> dependencies = new();
+    private string parameterVendorUuid_;
+    private string __parameterPermission_;
 
 
     private async Task OnNavigateAsync(NavigationContext args)
     {
+        if (string.IsNullOrEmpty(args.Path))
+            return;
+        if (args.Path.Equals("/"))
+            return;
         string path = args.Path;
+        // 去除参数
+        int parameterIndex = path.IndexOf("?");
+        if (parameterIndex > 0)
+        {
+            path = path.Substring(0, parameterIndex);
+        }
         if (lazyLoadedPath.Contains(path))
             return;
 
@@ -58,41 +71,52 @@
         }
     }
 
-    protected override async Task OnInitializedAsync()
+    public override async Task SetParametersAsync(ParameterView _parameters)
     {
-        await base.OnInitializedAsync();
-
-        var section = configuration_.GetSection("RuntimeScaling");
-        var scalingSettings = new RuntimeScalingSettings();
-        scalingSettings.Active = section.GetValue<bool>("Active");
-        scalingSettings.Repository = section.GetValue<string>("Repository");
-        scalingSettings.Environment = section.GetValue<string>("Environment");
-        scalingSettings.Grpc = section.GetValue<string>("Grpc");
-        scalingMgr_.settings = scalingSettings;
-        scalingMgr_.SetRepositoryHttpClient(new Uri(scalingSettings.Repository));
-
+        // 解析参数
+        parseUri();
 
         // 临时
-        var query = new Uri(navigationMgr_?.Uri ?? "").Query;
-        var vals = query.Replace("?", "").Split("&");
-        var permission = "";
-        foreach (var val in vals)
+        logger_.Trace("permission is {0}", __parameterPermission_);
+        if (!string.IsNullOrWhiteSpace(__parameterPermission_))
         {
-            if (val.Contains("permissions="))
-            {
-                permission = val.Replace("permissions=", "");
-            }
-        }
-        if (!string.IsNullOrWhiteSpace(permission))
-        {
-            var permissions = await scalingMgr_.internalClient.GetFromJsonAsync<string[]>("data/permissions_" + permission + ".json");
+            var permissions = await scalingMgr_.internalClient.GetFromJsonAsync<string[]>("data/permissions_" + __parameterPermission_ + ".json");
             var permissionMap = new Dictionary<string, string>();
             foreach (var p in permissions)
             {
                 permissionMap[p] = "";
             }
+            logger_.Trace("update {0} permissions", permissionMap.Count);
             moduleRouter_.UpdatePermissionS(permissionMap);
         }
+
+        var section = configuration_.GetSection("RuntimeScaling");
+        var scalingSettings = new RuntimeScalingSettings();
+        scalingSettings.Active = section.GetValue<bool>("Active");
+        scalingSettings.RepositoryAddress = section.GetValue<string>("RepositoryAddress");
+        scalingSettings.Environment = section.GetValue<string>("Environment");
+        scalingSettings.Grpc = section.GetValue<string>("Grpc");
+        scalingSettings.VendorAddress = section.GetValue<string>("VendorAddress");
+        scalingMgr_.SetRepositoryHttpClient(new Uri(scalingSettings.RepositoryAddress));
+        scalingMgr_.SetVendorHttpClient(new Uri(scalingSettings.VendorAddress));
+        // 使用vendor
+        if (!string.IsNullOrWhiteSpace(parameterVendorUuid_))
+        {
+            scalingMgr_.vendor = parameterVendorUuid_;
+            //navigationMgr_.NavigateTo("/");
+        }
+        scalingMgr_.settings = scalingSettings;
+        if (scalingSettings.Active)
+        {
+            await scalingMgr_.FetchData();
+        }
+
+        await base.SetParametersAsync(_parameters);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
     }
 
     private void loadDependencies()
@@ -100,5 +124,24 @@
         dependencies.Add(typeof(InputFile));
         dependencies.Add(typeof(IBrowserFile));
         dependencies.Add(typeof(IBufferWriter<string>));
+    }
+
+    private void parseUri()
+    {
+        var query = new Uri(navigationMgr_?.Uri ?? "").Query;
+        var vals = query.Replace("?", "").Split("&");
+        __parameterPermission_ = "";
+        parameterVendorUuid_ = null;
+        foreach (var val in vals)
+        {
+            if (val.Contains("permissions="))
+            {
+                __parameterPermission_ = val.Replace("permissions=", "");
+            }
+            else if (val.Contains("vendor="))
+            {
+                parameterVendorUuid_ = val.Replace("vendor=", "");
+            }
+        }
     }
 }

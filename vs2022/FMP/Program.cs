@@ -11,11 +11,13 @@ namespace XTC.FMP.APP.Blazor
     {
         public static async Task Main(string[] args)
         {
+            RuntimeScalingManager scalingManager = new RuntimeScalingManager();
+
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
-            builder.Services.Configure<ProSettings>(builder.Configuration.GetSection("ProSettings"));
+            scalingManager.skinConfig = builder.Configuration.GetSection("ProSettings");
+            builder.Services.Configure<ProSettings>(scalingManager.skinConfig);
 
             ModuleRouter modelRouter = new ModuleRouter();
-            RuntimeScalingManager scalingManager = new RuntimeScalingManager();
             scalingManager.SetInternalHttpClient(new Uri(builder.HostEnvironment.BaseAddress));
             AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(modelRouter.AssemblyResolve);
 
@@ -27,8 +29,8 @@ namespace XTC.FMP.APP.Blazor
 
             framework.Setup();
 
+            scalingManager.logger = logger;
             builder.RootComponents.Add<App>("#app");
-
 
             builder.Services.AddScoped(sp => logger);
             builder.Services.AddScoped(sp => framework);

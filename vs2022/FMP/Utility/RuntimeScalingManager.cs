@@ -1,9 +1,15 @@
-﻿using Grpc.Net.Client;
+﻿using AntDesign.ProLayout;
+using Grpc.Net.Client;
 using Grpc.Net.Client.Web;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
+using XTC.FMP.LIB.MVCS;
 
 namespace XTC.FMP.APP.Blazor
 {
@@ -11,8 +17,9 @@ namespace XTC.FMP.APP.Blazor
     {
         public bool Active { get; set; }
         public string Environment { get; set; }
-        public string Repository { get; set; }
+        public string RepositoryAddress { get; set; }
         public string Grpc { get; set; }
+        public string VendorAddress { get; set; }
     }
 
     /// <summary>
@@ -22,7 +29,13 @@ namespace XTC.FMP.APP.Blazor
     {
         public HttpClient internalClient { get; private set; }
         public HttpClient repositoryClient { get; private set; }
+        public HttpClient vendorClient { get; private set; }
         public RuntimeScalingSettings settings { get; set; }
+        public MenuDataItem[] menuConfig { get; set; }
+        public ModuleRouter.ModuleConfig moduleConfig { get; set; }
+        public IConfigurationSection skinConfig { get; set; }
+        public Logger logger { get; set; }
+        public string vendor { get; set; }
 
 
         private RepoAgent[] agents_;
@@ -42,12 +55,88 @@ namespace XTC.FMP.APP.Blazor
             internalClient = new HttpClient { BaseAddress = _uri };
         }
 
-        public async Task<RepoAgent[]> FetchAgents()
+        public void SetVendorHttpClient(Uri _uri)
         {
-            if (null != agents_)
-                return agents_;
-            agents_ = await repositoryClient.GetFromJsonAsync<RepoAgent[]>("fmp.repository/agents/manifest.json");
-            return agents_;
+            vendorClient = new HttpClient { BaseAddress = _uri };
+        }
+
+        public async Task FetchData()
+        {
+            if (!string.IsNullOrWhiteSpace(vendor))
+            {
+                await fetchVendor();
+                return;
+            }
+            await fetchAgents();
+        }
+
+        private async Task fetchVendor()
+        {
+            try
+            {
+                var vendorEntity = await vendorClient.GetFromJsonAsync<VendorEntity>(String.Format("fmp.vendor/blazor/{0}.json", vendor));
+                // 解析menu_data
+                string menuConfigJson = System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String(vendorEntity.MenuConfig));
+                menuConfig = JsonConvert.DeserializeObject<MenuDataItem[]>(menuConfigJson);
+                string moduleConfigJson = System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String(vendorEntity.ModulesConfig));
+                moduleConfig = JsonConvert.DeserializeObject<ModuleRouter.ModuleConfig>(moduleConfigJson);
+                byte[] skinConfigJson = System.Convert.FromBase64String(vendorEntity.SkinConfig);
+                MemoryStream ms = new MemoryStream(skinConfigJson);
+                var configurationBuilder = new ConfigurationBuilder();
+                configurationBuilder.AddJsonStream(ms);
+                var configurationRoot = configurationBuilder.Build();
+                skinConfig = configurationRoot.GetSection("ProSettings");
+            }
+            catch (System.Exception ex)
+            {
+                logger.Exception(ex);
+            }
+        }
+
+        private async Task fetchAgents()
+        {
+            List<MenuDataItem> menuDataItems = new List<MenuDataItem>();
+            menuDataItems.Add(new MenuDataItem
+            {
+                Path = "/",
+                Name = "Dashboard",
+                Key = "dashboard",
+                Icon = "dashboard",
+            });
+            List<ModuleRouter.Module> moduleS = new List<ModuleRouter.Module>();
+
+            var agents = await repositoryClient.GetFromJsonAsync<RepoAgent[]>("fmp.repository/agents/manifest.json");
+            foreach (var agent in agents)
+            {
+                var item = new MenuDataItem();
+                item.Path = "";
+                item.Name = string.Format("{0}.{1}", agent.Org, agent.Name);
+                item.Key = string.Format("{0}.{1}", agent.Org, agent.Name).ToLower();
+                item.Icon = "menu";
+                int pagesCount = agent.Pages?.Length ?? 0;
+                item.Children = new MenuDataItem[pagesCount];
+                for (int i = 0; i < pagesCount; i++)
+                {
+                    item.Children[i] = new MenuDataItem
+                    {
+                        Path = string.Format("/{0}/{1}/{2}", agent.Org.ToLower(), agent.Name.ToLower(), agent.Pages[i].ToLower()),
+                        Name = agent.Pages[i],
+                        Key = string.Format("/{0}/{1}/{2}", agent.Org.ToLower(), agent.Name.ToLower(), agent.Pages[i].ToLower()),
+                    };
+                }
+                menuDataItems.Add(item);
+
+                var module = new ModuleRouter.Module();
+                module.org = agent.Org;
+                module.name = agent.Name;
+                module.version = agent.Version;
+                module.grpc = string.Format("{0}:{1}", settings.Grpc, agent.Port);
+                module.pages.AddRange(agent.Pages ?? new string[0]);
+                moduleS.Add(module);
+            }
+            menuConfig = menuDataItems.ToArray();
+            moduleConfig = new ModuleRouter.ModuleConfig();
+            moduleConfig.modules = moduleS.ToArray();
         }
     }
 }

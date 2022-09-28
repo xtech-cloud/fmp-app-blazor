@@ -14,7 +14,7 @@ namespace XTC.FMP.APP.Blazor
 
     public class ModuleRouter
     {
-        private class Module
+        public class Module
         {
             public string org { get; set; }
             public string name { get; set; }
@@ -23,7 +23,7 @@ namespace XTC.FMP.APP.Blazor
             public List<string> pages { get; set; } = new List<string>();
         }
 
-        private class ModuleConfig
+        public class ModuleConfig
         {
             public Module[] modules { get; set; }
         }
@@ -42,20 +42,7 @@ namespace XTC.FMP.APP.Blazor
                 _logger.Debug("load modules.json ......");
                 if (_scalingMgr.settings.Active)
                 {
-                    // 获取仓库的清单
-                    var agents = await _scalingMgr.FetchAgents();
-                    config_ = new ModuleConfig();
-                    config_.modules = new Module[agents.Length];
-                    for (int i = 0; i < agents.Length; i++)
-                    {
-                        var m = agents[i];
-                        config_.modules[i] = new Module();
-                        config_.modules[i].org = m.Org;
-                        config_.modules[i].name = m.Name;
-                        config_.modules[i].version = m.Version;
-                        config_.modules[i].grpc = string.Format("{0}:{1}", _scalingMgr.settings.Grpc, m.Port);
-                        config_.modules[i].pages.AddRange(m.Pages ?? new string[0]);
-                    }
+                    config_ = _scalingMgr.moduleConfig;
                 }
                 else
                 {

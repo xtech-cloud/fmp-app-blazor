@@ -23,45 +23,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await applyScaling();
         await base.OnInitializedAsync();
-        if (!scalingMgr_.settings.Active)
-        {
-            menuData_ = await scalingMgr_.internalClient.GetFromJsonAsync<MenuDataItem[]>("data/menu.json");
-        }
-        else
-        {
-            List<MenuDataItem> menuDataItems = new List<MenuDataItem>();
-            menuDataItems.Add(new MenuDataItem
-                {
-                    Path = "/",
-                    Name = "Dashboard",
-                    Key = "dashboard",
-                    Icon = "dashboard",
-                });
-
-            var repoModules = await scalingMgr_.FetchAgents();
-            foreach (var module in repoModules)
-            {
-                MenuDataItem item = new MenuDataItem();
-                item.Path = "";
-                item.Name = string.Format("{0}.{1}", module.Org, module.Name);
-                item.Key = string.Format("{0}.{1}", module.Org, module.Name).ToLower();
-                item.Icon = "menu";
-                int pagesCount = module.Pages?.Length ?? 0;
-                item.Children = new MenuDataItem[pagesCount];
-                for (int i = 0; i < pagesCount; i++)
-                {
-                    item.Children[i] = new MenuDataItem
-                        {
-                            Path = string.Format("/{0}/{1}/{2}", module.Org.ToLower(), module.Name.ToLower(), module.Pages[i].ToLower()),
-                            Name = module.Pages[i],
-                            Key = string.Format("/{0}/{1}/{2}", module.Org.ToLower(), module.Name.ToLower(), module.Pages[i].ToLower()),
-                        };
-                }
-                menuDataItems.Add(item);
-            }
-            menuData_ = menuDataItems.ToArray();
-        }
     }
 
     public LinkItem[] Links { get; set; } =
@@ -76,4 +39,16 @@
     }
     */
     };
+
+    private async Task applyScaling()
+    {
+        if (!scalingMgr_.settings.Active)
+        {
+            menuData_ = await scalingMgr_.internalClient.GetFromJsonAsync<MenuDataItem[]>("data/menu.json");
+        }
+        else
+        {
+            menuData_ = scalingMgr_.menuConfig; 
+        }
+    }
 }

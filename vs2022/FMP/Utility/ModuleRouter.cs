@@ -1,4 +1,7 @@
-﻿using Grpc.Net.Client;
+﻿/*
+ * 延迟加载技术参见 https://learn.microsoft.com/zh-cn/aspnet/core/blazor/webassembly-lazy-load-assemblies
+ */
+using Grpc.Net.Client;
 using Grpc.Net.Client.Web;
 using System;
 using System.Collections.Generic;
@@ -101,6 +104,7 @@ namespace XTC.FMP.APP.Blazor
         public Assembly AssemblyResolve(object sender, ResolveEventArgs args)
         {
             var assembly = assemblyMap_[args.Name.Remove(args.Name.IndexOf(',')) + ".dll"];
+            Console.WriteLine("Resolve {0} {1}", args.Name, null == assembly ? "failure" : "success");
             return assembly;
         }
 

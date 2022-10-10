@@ -5,6 +5,7 @@
     <RazorLangVersion>3.0</RazorLangVersion>
     <RootNamespace>XTC.FMP.APP.Blazor</RootNamespace>
     <AssemblyName>XTC.FMP.APP.Blazor</AssemblyName>
+    <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,5 +35,4 @@
     <Folder Include="wwwroot\data\" />
     <Folder Include="wwwroot\modules\" />
   </ItemGroup>
-
 </Project>

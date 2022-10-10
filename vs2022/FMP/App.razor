@@ -34,10 +34,8 @@
 @code {
     private List<Assembly> lazyLoadedAssemblies = new();
     private List<string> lazyLoadedPath = new();
-    private List<Type> dependencies = new();
     private string parameterVendorUuid_;
     private string __parameterPermission_;
-
 
     private async Task OnNavigateAsync(NavigationContext args)
     {
@@ -54,11 +52,6 @@
         }
         if (lazyLoadedPath.Contains(path))
             return;
-
-        if (dependencies.Count == 0)
-        {
-            loadDependencies();
-        }
 
         try
         {
@@ -119,13 +112,6 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-    }
-
-    private void loadDependencies()
-    {
-        dependencies.Add(typeof(InputFile));
-        dependencies.Add(typeof(IBrowserFile));
-        dependencies.Add(typeof(IBufferWriter<string>));
     }
 
     private void parseUri()

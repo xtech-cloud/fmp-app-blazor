@@ -162,7 +162,9 @@ namespace XTC.FMP.APP.Blazor
         {
             var channel = GrpcChannel.ForAddress(_module.grpc, new GrpcChannelOptions
             {
-                HttpHandler = new GrpcWebHandler(new HttpClientHandler())
+                HttpHandler = new GrpcWebHandler(new HttpClientHandler()),
+                MaxReceiveMessageSize = int.MaxValue,
+                MaxSendMessageSize = int.MaxValue,
             });
 
             string ns = string.Format("{0}.FMP.MOD.{1}", _module.org, _module.name);
